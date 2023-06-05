@@ -1,20 +1,33 @@
+import { useRouter } from "next/router";
+import { useCallback } from "react";
 import { IconType } from "react-icons";
 
 interface SidebarItemProps {
-  label: String;
-  href?: String;
+  label: string;
+  href?: string;
   icon: IconType;
-  onCLick?: () => void;
+  onClick?: () => void;
 }
 
 const SidebarItem: React.FC<SidebarItemProps> = ({
   label,
   href,
   icon: Icon,
-  onCLick,
+  onClick,
 }) => {
+  const router = useRouter();
+  const handleClick = useCallback(() => {
+    if (onClick) {
+      return onClick();
+    }
+
+    if (href) {
+      router.push(href);
+    }
+  }, [router, onClick, href]);
+
   return (
-    <div className="flex flex-row item-center">
+    <div onClick={handleClick} className="flex flex-row item-center">
       <div
         className="
           relative 

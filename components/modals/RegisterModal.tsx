@@ -1,10 +1,13 @@
 import { useCallback, useState } from "react";
+import { toast } from "react-hot-toast";
+import { signIn } from "next-auth/react";
 
+import axios from "axios";
 import Input from "../Input";
 import Modal from "../Modal";
 
-import useRegisterModal from "@/hooks/userRegisterModal";
-import useLoginModal from "@/hooks/userLoginModal";
+import useRegisterModal from "@/hooks/useRegisterModal";
+import useLoginModal from "@/hooks/useLoginModal";
 
 const RegisterModal = () => {
   const loginModal = useLoginModal();
@@ -16,17 +19,41 @@ const RegisterModal = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const onToggle = useCallback(() => {
+    if (isLoading) {
+      return;
+    }
+
+    registerModal.onClose();
+    loginModal.onOpen();
+  }, [isLoading, registerModal, loginModal]);
+
   const onSubmit = useCallback(async () => {
     try {
       setIsLoading(true);
 
+      await axios.post("/api/register", {
+        email,
+        password,
+        username,
+        name,
+      });
+
+      toast.success("Account created");
+
+      signIn("credentials", {
+        email,
+        password,
+      });
+
       registerModal.onClose();
     } catch (error) {
+      toast.error("Something went wrong");
       console.log(error);
     } finally {
       setIsLoading(false);
     }
-  }, [registerModal]);
+  }, [registerModal, email, password, username, name]);
 
   const bodyContent = (
     <div className="flex flex-col gap-4">
@@ -60,16 +87,16 @@ const RegisterModal = () => {
   const footerContent = (
     <div className="text-neutral-400 text-center mt-4">
       <p>
-        Already have an account?
+        Already have an account? {""}
         <span
+          onClick={onToggle}
           className="
             text-white
             cursor-pointer
             hover:underline
             "
         >
-          {" "}
-          Sign in{" "}
+          Sign in
         </span>
       </p>
     </div>
@@ -79,8 +106,8 @@ const RegisterModal = () => {
     <Modal
       disabled={isLoading}
       isOpen={registerModal.isOpen}
-      title="Register"
-      actionLabel="Sign in"
+      title="Create an account"
+      actionLabel="Register"
       onClose={registerModal.onClose}
       onSubmit={onSubmit}
       body={bodyContent}
