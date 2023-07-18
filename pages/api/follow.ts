@@ -11,7 +11,7 @@ export default async function handler(
   }
 
   try {
-    const { userId } = req.query;
+    const userId = req.method === "POST" ? req.body.userId : req.query.userId;
 
     const { currentUser } = await serverAuth(req, res);
 
@@ -29,14 +29,34 @@ export default async function handler(
       throw new Error("Invalid ID");
     }
 
-    let updatedFollowings = [...(user.followingIds || [])];
+    let updatedFollowingsIds = [...(user.followingIds || [])];
 
     if (req.method === "POST") {
-      updatedFollowings.push(userId);
+      updatedFollowingsIds.push(userId);
+
+      try {
+        await prisma.notification.create({
+          data: {
+            body: "Someone followed you",
+            userId,
+          },
+        });
+
+        await prisma.user.update({
+          where: {
+            id: userId,
+          },
+          data: {
+            hasNotification: true,
+          },
+        });
+      } catch (error) {
+        console.log(error);
+      }
     }
 
     if (req.method === "DELETE") {
-      updatedFollowings = updatedFollowings.filter(
+      updatedFollowingsIds = updatedFollowingsIds.filter(
         (followingId) => followingId != userId
       );
     }
@@ -46,7 +66,7 @@ export default async function handler(
         id: currentUser.id,
       },
       data: {
-        followingIds: updatedFollowings,
+        followingIds: updatedFollowingsIds,
       },
     });
 

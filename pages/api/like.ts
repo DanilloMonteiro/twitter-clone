@@ -11,11 +11,11 @@ export default async function handler(
   }
 
   try {
-    const { postId } = req.body;
+    const postId = req.method === "POST" ? req.body.postId : req.query.postId;
 
     const { currentUser } = await serverAuth(req, res);
 
-    if (!postId || typeof postId != "string") {
+    if (!postId) {
       throw new Error("Invalid ID");
     }
 
@@ -29,24 +29,52 @@ export default async function handler(
       throw new Error("Invalid ID");
     }
 
-    let updatedLikesIds = [...(post.likeIds || [])];
+    let updatedLikedIds = [...(post.likeIds || [])];
 
     if (req.method === "POST") {
-      updatedLikesIds.push(currentUser.id);
+      updatedLikedIds.push(currentUser.id);
+
+      try {
+        const post = await prisma.post.findUnique({
+          where: {
+            id: postId,
+          },
+        });
+
+        if (post?.userId) {
+          await prisma.notification.create({
+            data: {
+              body: "Someone like your tweet!",
+              userId: post.userId,
+            },
+          });
+
+          await prisma.user.update({
+            where: {
+              id: post.userId,
+            },
+            data: {
+              hasNotification: true,
+            },
+          });
+        }
+      } catch (error) {
+        console.log(error);
+      }
     }
 
     if (req.method === "DELETE") {
-      updatedLikesIds = updatedLikesIds.filter(
-        (likeId) => likeId != currentUser.id
+      updatedLikedIds = updatedLikedIds.filter(
+        (likedId) => likedId != currentUser.id
       );
     }
 
-    const updatedPost = await prisma.user.update({
+    const updatedPost = await prisma.post.update({
       where: {
         id: postId,
       },
       data: {
-        followingIds: updatedLikesIds,
+        likeIds: updatedLikedIds,
       },
     });
 
